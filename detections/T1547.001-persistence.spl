@@ -1,0 +1,5 @@
+index="endpoint" (sourcetype="*Sysmon*" OR sourcetype="*Security*") ("CurrentVersion\Run" OR "CurrentVersion\RunOnce")
+| spath
+| eval EventCode=coalesce('Event.System.EventID', EventCode)
+| eval TargetObject=coalesce('Event.EventData.TargetObject', 'Event.EventData.Data')
+| table _time, host, EventCode, TargetObject
