@@ -1,4 +1,4 @@
-Markdown# Cloud SOC Detection & Adversary Emulation Lab
+# Cloud SOC Detection & Adversary Emulation Lab
 
 An enterprise-grade Security Operations Center (SOC) lab deployed in Microsoft Azure. This project demonstrates end-to-end telemetry engineering, log forwarding, adversary simulation mapped to the MITRE ATT&CK framework, and detection engineering using Splunk Enterprise and Microsoft Sysmon.
 
@@ -6,50 +6,46 @@ An enterprise-grade Security Operations Center (SOC) lab deployed in Microsoft A
 
 ## Architecture Overview
 
-                  +-------------------------------------------------+
-                  |              Microsoft Azure Cloud              |
-                  |                 Region: East Asia               |
-                  +-------------------------------------------------+
-                                   |
-    +------------------------------+------------------------------+
-    |                                                             |
-    ▼                                                             ▼
-+------------------------------------+              +------------------------------------+|        Target Windows Node         |              |          Splunk SIEM Node          ||  VM: vm-windows-target (Win 2022)  |              |   VM: vm-splunk-server (Ubuntu)    ||                                    |              |                                    || - Microsoft Sysmon (v4.91)         |              | - Splunk Enterprise 9.3.0          ||   (SwiftOnSecurity Config)         |              | - Index: "endpoint"                || - Windows Security Auditing (4688) |              | - TCP Port 9997 (Receiver)         || - Invoke-AtomicRedTeam             |              | - TCP Port 8000 (Splunk Web UI)    || - Splunk Universal Forwarder       |              |                                    |+------------------------------------+              +------------------------------------+|                                                             ▲|                                                             |+----------------- Encrypted TCP Port 9997 -------------------+(Sysmon, Security, System Logs)
----
+```text
+                      +-------------------------------------------------+
+                      |              Microsoft Azure Cloud              |
+                      |                 Region: East Asia               |
+                      +-------------------------------------------------+
+                                       |
+        +------------------------------+------------------------------+
+        |                                                             |
+        ▼                                                             ▼
++------------------------------------+              +------------------------------------+
+|        Target Windows Node         |              |          Splunk SIEM Node          |
+|  VM: vm-windows-target (Win 2022)  |              |   VM: vm-splunk-server (Ubuntu)    |
+|                                    |              |                                    |
+| - Microsoft Sysmon (v4.91)         |              | - Splunk Enterprise 9.3.0          |
+|   (SwiftOnSecurity Config)         |              | - Index: "endpoint"                |
+| - Windows Security Auditing (4688) |              | - TCP Port 9997 (Receiver)         |
+| - Invoke-AtomicRedTeam             |              | - TCP Port 8000 (Splunk Web UI)    |
+| - Splunk Universal Forwarder       |              |                                    |
++------------------------------------+              +------------------------------------+
+        |                                                             ▲
+        |                                                             |
+        +----------------- Encrypted TCP Port 9997 -------------------+
+                          (Sysmon, Security, System Logs)
 
-## Technical Highlights & Key Competencies
+Technical Highlights & Key CompetenciesCloud Infrastructure & Network Hardening: Provisioned and managed Linux and Windows virtual machines in Microsoft Azure, configuring Network Security Group (NSG) firewall rules to restrict administrative exposure.Telemetry Pipeline Engineering: Configured the Splunk Universal Forwarder on Windows Server 2022 to collect, parse, and ship high-fidelity telemetry from Windows Event Logs (Security, System) and Microsoft-Windows-Sysmon/Operational into a dedicated index.Systems Administration & Privilege Troubleshooting: Diagnosed and resolved Windows virtual account permission restrictions (NT SERVICE\SplunkForwarder) preventing Sysmon log ingestion by reconfiguring the service security context to LocalSystem.Adversary Emulation (MITRE ATT&CK): Leveraged the Red Canary Invoke-AtomicRedTeam framework to execute real-world adversary techniques across execution and persistence tactics.Detection Engineering (SPL): Developed, tested, and validated Search Processing Language (SPL) detection queries with spath XML extraction to surface unauthorized process executions and registry persistence.Operational Monitoring: Designed a multi-panel visual SOC dashboard and alert rules for automated threat notification.Environment SpecificationsComponentOperating SystemRoleKey ToolingSIEM ServerUbuntu Server 22.04 LTS (x64)Log Collection, Indexing, AnalyticsSplunk Enterprise 9.3.0Target EndpointWindows Server 2022 Datacenter (x64)Telemetry Source & Simulation TargetSysmon 64-bit, Splunk Universal ForwarderEmulation EngineWindows PowerShell 5.1Adversary Testing FrameworkInvoke-AtomicRedTeamPhase 1: SIEM Server Deployment (Splunk Enterprise)1.1 Ingestion ConfigurationSplunk Enterprise was installed on Ubuntu Linux 22.04 LTS and configured to listen for forwarder traffic on TCP port 9997:
 
-* **Cloud Infrastructure & Network Hardening:** Provisioned and managed Linux and Windows virtual machines in Microsoft Azure, configuring Network Security Group (NSG) firewall rules to restrict administrative exposure.
-* **Telemetry Pipeline Engineering:** Configured the Splunk Universal Forwarder on Windows Server 2022 to collect, parse, and ship high-fidelity telemetry from Windows Event Logs (`Security`, `System`) and `Microsoft-Windows-Sysmon/Operational` into a dedicated index.
-* **Systems Administration & Privilege Troubleshooting:** Diagnosed and resolved Windows virtual account permission restrictions (`NT SERVICE\SplunkForwarder`) preventing Sysmon log ingestion by reconfiguring the service security context to `LocalSystem`.
-* **Adversary Emulation (MITRE ATT&CK):** Leveraged the Red Canary `Invoke-AtomicRedTeam` framework to execute real-world adversary techniques across execution and persistence tactics.
-* **Detection Engineering (SPL):** Developed, tested, and validated Search Processing Language (SPL) detection queries with `spath` XML extraction to surface unauthorized process executions and registry persistence.
-* **Operational Monitoring:** Designed a multi-panel visual SOC dashboard and alert rules for automated threat notification.
-
----
-
-## Environment Specifications
-
-| Component | Operating System | Role | Key Tooling |
-| :--- | :--- | :--- | :--- |
-| **SIEM Server** | Ubuntu Server 22.04 LTS (x64) | Log Collection, Indexing, Analytics | Splunk Enterprise 9.3.0 |
-| **Target Endpoint** | Windows Server 2022 Datacenter (x64) | Telemetry Source & Simulation Target | Sysmon 64-bit, Splunk Universal Forwarder |
-| **Emulation Engine** | Windows PowerShell 5.1 | Adversary Testing Framework | Invoke-AtomicRedTeam |
-
----
-
-## Phase 1: SIEM Server Deployment (Splunk Enterprise)
-
-### 1.1 Ingestion Configuration
-Splunk Enterprise was installed on Ubuntu Linux 22.04 LTS and configured to listen for forwarder traffic on TCP port `9997`:
-
-```bash
 # Enable automatic startup on boot
 sudo /opt/splunk/bin/splunk enable boot-start
 
 # Enable ingestion listener on TCP port 9997
 sudo /opt/splunk/bin/splunk enable listen 9997 -auth admin:<password>
-1.2 Dedicated Index CreationTo prevent data contamination with internal Splunk logs (_internal), a dedicated index named endpoint was provisioned via Splunk Web (Settings > Indexes > New Index).Phase 2: Endpoint Telemetry & Forwarder Hardening2.1 Sysmon DeploymentSysmon was deployed alongside the community-standard SwiftOnSecurity configuration file to capture process creations, network connections, file modifications, and registry changes:PowerShellNew-Item -ItemType Directory -Path "C:\Tools" -Force
+
+1.2 Dedicated Index Creation
+To prevent data contamination with internal Splunk logs (_internal), a dedicated index named endpoint was provisioned via Splunk Web (Settings > Indexes > New Index).
+
+Phase 2: Endpoint Telemetry & Forwarder Hardening
+2.1 Sysmon Deployment
+Sysmon was deployed alongside the community-standard SwiftOnSecurity configuration file to capture process creations, network connections, file modifications, and registry changes:
+
+New-Item -ItemType Directory -Path "C:\Tools" -Force
 Set-Location "C:\Tools"
 
 # Download Sysmon & SwiftOnSecurity Config
@@ -59,6 +55,7 @@ Invoke-WebRequest -Uri "[https://raw.githubusercontent.com/SwiftOnSecurity/sysmo
 
 # Install Sysmon Service
 & "C:\Tools\Sysmon\Sysmon64.exe" -accepteula -i "C:\Tools\Sysmon\sysmonconfig.xml"
+
 2.2 Inputs Configuration (inputs.conf)The Universal Forwarder was configured via C:\Program Files\SplunkUniversalForwarder\etc\system\local\inputs.conf:Ini, TOML[WinEventLog://Security]
 disabled = 0
 index = endpoint
