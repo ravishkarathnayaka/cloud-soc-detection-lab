@@ -1,0 +1,53 @@
+<dashboard version="1.1" theme="dark">
+  <label>Endpoint Telemetry &amp; Adversary Detection</label>
+  <row>
+    <panel>
+      <single>
+        <title>Total Security &amp; Sysmon Events</title>
+        <search>
+          <query>index="endpoint" | stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+      </single>
+    </panel>
+    <panel>
+      <chart>
+        <title>Ingestion Volume by Sourcetype</title>
+        <search>
+          <query>index="endpoint" | stats count by sourcetype</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Sysmon Event ID Breakdown</title>
+        <search>
+          <query>index="endpoint" sourcetype="*Sysmon*" | spath | stats count by "Event.System.EventID"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.axisTitleX.text">Count</option>
+        <option name="charting.axisTitleY.text">Event ID</option>
+      </chart>
+    </panel>
+    <panel>
+      <table>
+        <title>Adversary Persistence Detections (T1547.001)</title>
+        <search>
+          <query>index="endpoint" "CurrentVersion\Run" | spath | table _time, host, "Event.System.EventID", "Event.EventData.Data"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+</dashboard>
